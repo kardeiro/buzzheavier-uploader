@@ -79,8 +79,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
-    implementation("androidx.datastore:datastore-preferences:1.0.2")
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.documentfile:documentfile:1.0.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

@@ -14,7 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.buzzheavier.uploader.ui.theme.BuzzHeavierUploaderTheme
 import com.buzzheavier.uploader.ui.navigation.BuzzHeavierNavHost
-import dagger.hilt.android.HiltAndroidApp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

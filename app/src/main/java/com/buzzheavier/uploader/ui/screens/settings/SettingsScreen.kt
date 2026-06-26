@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -327,7 +328,3 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-private fun Box(contentAlignment: Alignment, content: @Composable () -> Unit) {
-    Box(modifier = Modifier, contentAlignment = contentAlignment, content = content)
-}
