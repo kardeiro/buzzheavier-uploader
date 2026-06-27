@@ -225,17 +225,21 @@ fun UploadScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(16.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(Modifier.height(16.dp))
 
-            AnimatedVisibility(
-                visible = uploadStatus == UploadStatus.IDLE || uploadStatus == UploadStatus.FAILED,
+                AnimatedVisibility(
+                    visible = uploadStatus == UploadStatus.IDLE || uploadStatus == UploadStatus.FAILED,
                 enter = fadeIn() + scaleIn(initialScale = 0.9f, animationSpec = spring(dampingRatio = 0.6f)),
                 exit = fadeOut() + scaleOut(targetScale = 0.9f)
             ) {
@@ -394,7 +398,7 @@ fun UploadScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.End)
+                    .align(Alignment.BottomEnd)
                     .padding(end = 24.dp, bottom = 100.dp),
                 horizontalArrangement = Arrangement.End
             ) {
@@ -420,6 +424,7 @@ fun UploadScreen(
                 )
             }
         }
+    }
     }
 }
 
