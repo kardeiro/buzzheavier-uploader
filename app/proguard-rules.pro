@@ -19,6 +19,10 @@
 # Keep data models
 -keep class com.buzzheavier.uploader.data.** { *; }
 
+# Compose
+-keep class androidx.compose.animation.core.KeyframesSpec { *; }
+-keep class androidx.compose.animation.core.KeyframesSpec$KeyframeEntity { *; }
+
 # Kotlin
 -dontwarn kotlin.**
 -keep class kotlin.Metadata { *; }
