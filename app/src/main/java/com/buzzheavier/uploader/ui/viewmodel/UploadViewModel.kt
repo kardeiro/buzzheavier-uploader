@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.buzzheavier.uploader.data.UserPreferences
 import com.buzzheavier.uploader.network.UploadManager
+import com.buzzheavier.uploader.utils.isNetworkAvailable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,9 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _selectedFileSize = MutableStateFlow(0L)
     val selectedFileSize: StateFlow<Long> = _selectedFileSize.asStateFlow()
+
+    private val _networkError = MutableStateFlow<String?>(null)
+    val networkError: StateFlow<String?> = _networkError.asStateFlow()
 
     val isAnonymous: StateFlow<Boolean> = prefs.isAnonymous
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
@@ -55,6 +59,10 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
 
     fun upload(note: String = "") {
         val uri = _selectedUri.value ?: return
+        if (!isNetworkAvailable(getApplication())) {
+            _networkError.value = "Sem conexão com a internet. Verifique sua rede."
+            return
+        }
         val anon = isAnonymous.value
         val accId = accountId.value
         val parId = parentId.value
@@ -68,6 +76,10 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
                 note = note
             )
         }
+    }
+
+    fun clearNetworkError() {
+        _networkError.value = null
     }
 
     fun cancelUpload() {
