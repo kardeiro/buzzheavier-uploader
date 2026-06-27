@@ -72,7 +72,7 @@ class UploadManager(private val context: Context) {
                     var lastTime = System.currentTimeMillis()
                     var lastBytes = 0L
 
-                    while (!source.exhausted()) {
+                    while (true) {
                         val read = source.read(buffer, bufferSize)
                         if (read == -1L) break
                         sink.write(buffer, read)
@@ -188,7 +188,7 @@ class UploadManager(private val context: Context) {
         _uploadState.value = UploadState()
     }
 
-    private fun getFileName(uri: Uri): String? {
+    internal fun getFileName(uri: Uri): String? {
         return when (uri.scheme) {
             ContentResolver.SCHEME_CONTENT -> {
                 context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -200,7 +200,7 @@ class UploadManager(private val context: Context) {
         }
     }
 
-    private fun getFileSize(uri: Uri): Long {
+    internal fun getFileSize(uri: Uri): Long {
         return when (uri.scheme) {
             ContentResolver.SCHEME_CONTENT -> {
                 context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->

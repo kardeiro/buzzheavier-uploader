@@ -220,8 +220,8 @@ fun SettingsScreen(
 
             AnimatedVisibility(
                 visible = true,
-                enter = slideInVertically(initialY = { it / 4 }) + fadeIn(),
-                exit = slideOutVertically(targetY = { it / 4 }) + fadeOut()
+                enter = slideInVertically { height -> height / 4 } + fadeIn(),
+                exit = slideOutVertically { height -> height / 4 } + fadeOut()
             ) {
                 OutlinedCard(
                     modifier = Modifier.fillMaxWidth(),

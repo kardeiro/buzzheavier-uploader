@@ -2,22 +2,26 @@ package com.buzzheavier.uploader.network
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.lifecycleScope
 import com.buzzheavier.uploader.MainActivity
 import com.buzzheavier.uploader.R
 import com.buzzheavier.uploader.UploadConstants
 import com.buzzheavier.uploader.data.UploadProgress
 import com.buzzheavier.uploader.data.UploadStatus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
-class UploadService : LifecycleService() {
+class UploadService : Service() {
 
     companion object {
         val currentProgress = MutableStateFlow(UploadProgress())
@@ -27,11 +31,14 @@ class UploadService : LifecycleService() {
     }
 
     private var uploadManager: UploadManager? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
         super.onCreate()
         uploadManager = UploadManager(this)
     }
+
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
@@ -45,7 +52,7 @@ class UploadService : LifecycleService() {
                 val note = intent.getStringExtra("note") ?: ""
 
                 startForegroundNotification()
-                lifecycleScope.launch {
+                serviceScope.launch {
                     uploadManager?.uploadFile(
                         uri = uri,
                         accountId = accountId,
@@ -67,6 +74,11 @@ class UploadService : LifecycleService() {
         }
 
         return START_NOT_STICKY
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 
     private fun startForegroundNotification() {

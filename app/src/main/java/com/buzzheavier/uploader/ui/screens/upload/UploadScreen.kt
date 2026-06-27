@@ -296,8 +296,8 @@ fun UploadScreen(
 
             AnimatedVisibility(
                 visible = selectedUri != null && (uploadStatus == UploadStatus.IDLE || uploadStatus == UploadStatus.FAILED),
-                enter = fadeIn() + slideInVertically(initialY = { it / 4 }),
-                exit = fadeOut() + slideOutVertically(targetY = { it / 4 })
+                enter = fadeIn() + slideInVertically { height -> height / 4 },
+                exit = fadeOut() + slideOutVertically { height -> height / 4 }
             ) {
                 UploadOptionsCard(
                     isAnonymous = isAnonymous,
@@ -393,7 +393,7 @@ fun UploadScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.BottomEnd)
+                    .align(Alignment.End)
                     .padding(end = 24.dp, bottom = 100.dp),
                 horizontalArrangement = Arrangement.End
             ) {
@@ -680,7 +680,7 @@ private fun UploadProgressCard(
             Spacer(Modifier.height(24.dp))
 
             LinearProgressIndicator(
-                progress = { progress.percentage / 100f },
+                progress = progress.percentage / 100f,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
