@@ -12,7 +12,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateSizeAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -24,8 +23,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -40,7 +37,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,8 +44,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.InsertDriveFile
@@ -69,18 +63,15 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -88,68 +79,56 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.buzzheavier.uploader.data.UploadProgress
 import com.buzzheavier.uploader.data.UploadResult
 import com.buzzheavier.uploader.data.UploadStatus
-import com.buzzheavier.uploader.network.UploadManager
-import com.buzzheavier.uploader.network.UploadService
+import com.buzzheavier.uploader.ui.viewmodel.UploadViewModel
+import com.buzzheavier.uploader.utils.formatFileSize
+import com.buzzheavier.uploader.utils.formatSpeed
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadScreen(
     onNavigateToFiles: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    sharedUri: Uri? = null,
+    viewModel: UploadViewModel = viewModel()
 ) {
+    LaunchedEffect(sharedUri) {
+        sharedUri?.let { viewModel.selectFile(it) }
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedFileName by remember { mutableStateOf("") }
-    var selectedFileSize by remember { mutableStateOf(0L) }
+    val uploadState by viewModel.uploadState.collectAsState()
+    val selectedUri by viewModel.selectedUri.collectAsState()
+    val selectedFileName by viewModel.selectedFileName.collectAsState()
+    val selectedFileSize by viewModel.selectedFileSize.collectAsState()
+    val isAnonymous by viewModel.isAnonymous.collectAsState()
+    val accountId by viewModel.accountId.collectAsState()
+    val parentId by viewModel.parentId.collectAsState()
+    val locationId by viewModel.locationId.collectAsState()
+
     var note by remember { mutableStateOf("") }
-    var isAnonymous by remember { mutableStateOf(true) }
-    var accountId by remember { mutableStateOf("") }
-    var parentId by remember { mutableStateOf("") }
-    var locationId by remember { mutableStateOf("") }
-    var uploadStatus by remember { mutableStateOf(UploadStatus.IDLE) }
-    var uploadProgress by remember { mutableStateOf(UploadProgress()) }
-    var uploadResult by remember { mutableStateOf<UploadResult?>(null) }
     var isDragging by remember { mutableStateOf(false) }
-
-    val uploadManager = remember { UploadManager(context) }
-    val uploadState by uploadManager.uploadState.collectAsState()
-
-    LaunchedEffect(uploadState) {
-        uploadStatus = uploadState.status
-        uploadProgress = uploadState.progress
-        uploadResult = uploadState.result
-    }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        uri?.let {
-            selectedUri = it
-            selectedFileName = uploadManager.getFileName(it) ?: "unknown"
-            selectedFileSize = uploadManager.getFileSize(it)
-        }
+        uri?.let { viewModel.selectFile(it) }
     }
 
     val animatedScale by animateFloatAsState(
@@ -238,7 +217,7 @@ fun UploadScreen(
                 Spacer(Modifier.height(16.dp))
 
                 AnimatedVisibility(
-                    visible = uploadStatus == UploadStatus.IDLE || uploadStatus == UploadStatus.FAILED,
+                    visible = uploadState.status == UploadStatus.IDLE || uploadState.status == UploadStatus.FAILED,
                 enter = fadeIn() + scaleIn(initialScale = 0.9f, animationSpec = spring(dampingRatio = 0.6f)),
                 exit = fadeOut() + scaleOut(targetScale = 0.9f)
             ) {
@@ -264,7 +243,7 @@ fun UploadScreen(
             Spacer(Modifier.height(32.dp))
 
             AnimatedVisibility(
-                visible = selectedUri == null && uploadStatus == UploadStatus.IDLE,
+                visible = selectedUri == null && uploadState.status == UploadStatus.IDLE,
                 enter = fadeIn() + scaleIn(initialScale = 0.9f, animationSpec = spring(dampingRatio = 0.5f)),
                 exit = fadeOut() + scaleOut(targetScale = 0.9f)
             ) {
@@ -281,62 +260,58 @@ fun UploadScreen(
             }
 
             AnimatedVisibility(
-                visible = selectedUri != null && uploadStatus == UploadStatus.IDLE,
+                visible = selectedUri != null && uploadState.status == UploadStatus.IDLE,
                 enter = slideInVertically() + fadeIn(),
                 exit = slideOutVertically() + fadeOut()
             ) {
                 SelectedFileCard(
                     fileName = selectedFileName,
                     fileSize = selectedFileSize,
-                    onRemove = {
-                        selectedUri = null
-                        selectedFileName = ""
-                        selectedFileSize = 0
-                    }
+                    onRemove = { viewModel.removeFile() }
                 )
             }
 
             Spacer(Modifier.height(24.dp))
 
             AnimatedVisibility(
-                visible = selectedUri != null && (uploadStatus == UploadStatus.IDLE || uploadStatus == UploadStatus.FAILED),
+                visible = selectedUri != null && (uploadState.status == UploadStatus.IDLE || uploadState.status == UploadStatus.FAILED),
                 enter = fadeIn() + slideInVertically { height -> height / 4 },
                 exit = fadeOut() + slideOutVertically { height -> height / 4 }
             ) {
                 UploadOptionsCard(
                     isAnonymous = isAnonymous,
-                    onIsAnonymousChange = { isAnonymous = it },
+                    onIsAnonymousChange = { /* saved in settings */ },
                     accountId = accountId,
-                    onAccountIdChange = { accountId = it },
+                    onAccountIdChange = { /* saved in settings */ },
                     parentId = parentId,
-                    onParentIdChange = { parentId = it },
+                    onParentIdChange = { /* saved in settings */ },
                     locationId = locationId,
-                    onLocationIdChange = { locationId = it },
+                    onLocationIdChange = { /* saved in settings */ },
                     note = note,
                     onNoteChange = { note = it }
                 )
             }
 
             AnimatedVisibility(
-                visible = uploadStatus == UploadStatus.UPLOADING || uploadStatus == UploadStatus.PREPARING,
+                visible = uploadState.status == UploadStatus.UPLOADING || uploadState.status == UploadStatus.PREPARING,
                 enter = fadeIn() + scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = 0.5f)),
                 exit = fadeOut() + scaleOut(targetScale = 0.95f)
             ) {
                 UploadProgressCard(
-                    progress = uploadProgress,
+                    progress = uploadState.progress,
                     fileName = uploadState.currentFile,
-                    status = uploadStatus,
-                    onCancel = { uploadManager.cancelUpload() }
+                    status = uploadState.status,
+                    onCancel = { viewModel.cancelUpload() }
                 )
             }
 
             AnimatedVisibility(
-                visible = uploadStatus == UploadStatus.COMPLETED && uploadResult != null,
+                visible = uploadState.status == UploadStatus.COMPLETED && uploadState.result != null,
                 enter = fadeIn() + scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMediumLow)),
                 exit = fadeOut() + scaleOut(targetScale = 0.8f)
             ) {
                 UploadCompleteCard(
-                    result = uploadResult!!,
+                    result = uploadState.result!!,
                     onCopyLink = { url ->
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(ClipData.newPlainText("Upload URL", url))
@@ -351,49 +326,26 @@ fun UploadScreen(
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "Compartilhar link"))
                     },
-                    onNewUpload = {
-                        uploadManager.resetState()
-                        selectedUri = null
-                        selectedFileName = ""
-                        selectedFileSize = 0
-                        uploadResult = null
-                    }
+                    onNewUpload = { viewModel.resetUpload() }
                 )
             }
 
             AnimatedVisibility(
-                visible = uploadStatus == UploadStatus.FAILED && uploadResult != null,
+                visible = uploadState.status == UploadStatus.FAILED && uploadState.result != null,
                 enter = fadeIn() + scaleIn(initialScale = 0.9f),
                 exit = fadeOut() + scaleOut(targetScale = 0.9f)
             ) {
                 UploadFailedCard(
-                    error = uploadResult?.error ?: "Unknown error",
-                    onRetry = {
-                        selectedUri?.let { uri ->
-                            scope.launch {
-                                uploadManager.uploadFile(
-                                    uri = uri,
-                                    accountId = if (isAnonymous) "" else accountId,
-                                    parentId = parentId,
-                                    locationId = locationId,
-                                    note = note
-                                )
-                            }
-                        }
-                    },
-                    onCancel = {
-                        uploadManager.resetState()
-                        selectedUri = null
-                        selectedFileName = ""
-                        selectedFileSize = 0
-                    }
+                    error = uploadState.result?.error ?: "Unknown error",
+                    onRetry = { viewModel.upload(note) },
+                    onCancel = { viewModel.resetUpload() }
                 )
             }
 
             Spacer(Modifier.height(16.dp))
         }
 
-        if (selectedUri != null && (uploadStatus == UploadStatus.IDLE || uploadStatus == UploadStatus.FAILED)) {
+        if (selectedUri != null && (uploadState.status == UploadStatus.IDLE || uploadState.status == UploadStatus.FAILED)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -402,19 +354,7 @@ fun UploadScreen(
                 horizontalArrangement = Arrangement.End
             ) {
                 ExtendedFloatingActionButton(
-                    onClick = {
-                        selectedUri?.let { uri ->
-                            scope.launch {
-                                uploadManager.uploadFile(
-                                    uri = uri,
-                                    accountId = if (isAnonymous) "" else accountId,
-                                    parentId = parentId,
-                                    locationId = locationId,
-                                    note = note
-                                )
-                            }
-                        }
-                    },
+                    onClick = { viewModel.upload(note) },
                     icon = { Icon(Icons.Filled.CloudUpload, contentDescription = null) },
                     text = { Text("Enviar", fontWeight = FontWeight.SemiBold) },
                     shape = RoundedCornerShape(28.dp),
@@ -933,22 +873,5 @@ private fun BottomAction(
         Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(4.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-private fun formatFileSize(bytes: Long): String {
-    return when {
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-        bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024))} MB"
-        else -> "${"%.2f".format(bytes / (1024.0 * 1024 * 1024))} GB"
-    }
-}
-
-private fun formatSpeed(bytesPerSecond: Long): String {
-    return when {
-        bytesPerSecond < 1024 -> "$bytesPerSecond B/s"
-        bytesPerSecond < 1024 * 1024 -> "${bytesPerSecond / 1024} KB/s"
-        else -> "${"%.1f".format(bytesPerSecond / (1024.0 * 1024))} MB/s"
     }
 }

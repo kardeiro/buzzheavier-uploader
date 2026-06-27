@@ -43,7 +43,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -59,7 +58,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,36 +65,31 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.buzzheavier.uploader.data.AccountInfo
-import com.buzzheavier.uploader.data.DirectoryInfo
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.buzzheavier.uploader.data.FileInfo
-import com.buzzheavier.uploader.data.StorageLocation
-import com.buzzheavier.uploader.network.BuzzHeavierApi
-import kotlinx.coroutines.launch
+import com.buzzheavier.uploader.ui.viewmodel.FilesViewModel
+import com.buzzheavier.uploader.utils.formatFileSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(
     directoryId: String = "",
     onNavigateBack: () -> Unit,
-    onNavigateToDirectory: (String) -> Unit
+    onNavigateToDirectory: (String) -> Unit,
+    viewModel: FilesViewModel = viewModel()
 ) {
-    val scope = rememberCoroutineScope()
-    var isLoading by remember { mutableStateOf(true) }
-    var directoryInfo by remember { mutableStateOf<DirectoryInfo?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var showCreateFolder by remember { mutableStateOf(false) }
-    var newFolderName by remember { mutableStateOf("") }
-    var accountId by remember { mutableStateOf("") }
+    val directoryInfo by viewModel.directoryInfo.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val showCreateFolder by viewModel.showCreateFolder.collectAsState()
+    val newFolderName by viewModel.newFolderName.collectAsState()
+    val deleteConfirmItemId by viewModel.deleteConfirmItemId.collectAsState()
+    val accountId by viewModel.accountId.collectAsState()
+
     var menuExpandedFor by remember { mutableStateOf<String?>(null) }
-    var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(directoryId) {
-        val api = BuzzHeavierApi(accountId)
-        val result = if (directoryId.isEmpty()) api.getRootDirectory() else api.getDirectory(directoryId)
-        result.onSuccess { directoryInfo = it }
-            .onFailure { error = it.message }
-        isLoading = false
+        viewModel.loadDirectory(directoryId)
     }
 
     Scaffold(
@@ -123,7 +116,7 @@ fun FilesScreen(
         floatingActionButton = {
             if (accountId.isNotEmpty()) {
                 ExtendedFloatingActionButton(
-                    onClick = { showCreateFolder = true },
+                    onClick = { viewModel.showCreateFolderDialog() },
                     icon = { Icon(Icons.Filled.CreateNewFolder, contentDescription = null) },
                     text = { Text("Nova Pasta") },
                     shape = RoundedCornerShape(28.dp),
@@ -153,17 +146,7 @@ fun FilesScreen(
                     ) {
                         Text(error ?: "Erro desconhecido", color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(12.dp))
-                        TextButton(onClick = {
-                            isLoading = true
-                            error = null
-                            scope.launch {
-                                val api = BuzzHeavierApi(accountId)
-                                val result = if (directoryId.isEmpty()) api.getRootDirectory() else api.getDirectory(directoryId)
-                                result.onSuccess { directoryInfo = it }
-                                    .onFailure { error = it.message }
-                                isLoading = false
-                            }
-                        }) {
+                        TextButton(onClick = { viewModel.loadDirectory(directoryId) }) {
                             Text("Tentar Novamente")
                         }
                     }
@@ -199,7 +182,7 @@ fun FilesScreen(
                                         onNavigateToDirectory = onNavigateToDirectory,
                                         menuExpanded = menuExpandedFor == file.id,
                                         onMenuToggle = { menuExpandedFor = if (menuExpandedFor == file.id) null else file.id },
-                                        onDelete = { showDeleteConfirm = file.id },
+                                        onDelete = { viewModel.showDeleteConfirm(file.id) },
                                         onDismissMenu = { menuExpandedFor = null }
                                     )
                                 }
@@ -213,12 +196,12 @@ fun FilesScreen(
 
     if (showCreateFolder) {
         AlertDialog(
-            onDismissRequest = { showCreateFolder = false },
+            onDismissRequest = { viewModel.dismissCreateFolderDialog() },
             title = { Text("Criar Pasta") },
             text = {
                 OutlinedTextField(
                     value = newFolderName,
-                    onValueChange = { newFolderName = it },
+                    onValueChange = { viewModel.setNewFolderName(it) },
                     label = { Text("Nome da Pasta") },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true
@@ -227,17 +210,8 @@ fun FilesScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        scope.launch {
-                            val api = BuzzHeavierApi(accountId)
-                            val parentId = directoryId.ifEmpty { directoryInfo?.id ?: "" }
-                            api.createDirectory(parentId, newFolderName)
-                            showCreateFolder = false
-                            newFolderName = ""
-                            isLoading = true
-                            val result = if (directoryId.isEmpty()) api.getRootDirectory() else api.getDirectory(directoryId)
-                            result.onSuccess { directoryInfo = it }
-                            isLoading = false
-                        }
+                        val parentId = directoryId.ifEmpty { directoryInfo?.id ?: "" }
+                        viewModel.createFolder(parentId)
                     },
                     enabled = newFolderName.isNotBlank()
                 ) {
@@ -245,7 +219,7 @@ fun FilesScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateFolder = false }) {
+                TextButton(onClick = { viewModel.dismissCreateFolderDialog() }) {
                     Text("Cancelar")
                 }
             },
@@ -253,28 +227,20 @@ fun FilesScreen(
         )
     }
 
-    showDeleteConfirm?.let { itemId ->
+    deleteConfirmItemId?.let { itemId ->
         AlertDialog(
-            onDismissRequest = { showDeleteConfirm = null },
+            onDismissRequest = { viewModel.dismissDeleteConfirm() },
             title = { Text("Confirmar Exclusão") },
             text = { Text("Deseja realmente excluir este item?") },
             confirmButton = {
                 TextButton(onClick = {
-                    scope.launch {
-                        val api = BuzzHeavierApi(accountId)
-                        api.deleteItem(itemId)
-                        showDeleteConfirm = null
-                        isLoading = true
-                        val result = if (directoryId.isEmpty()) api.getRootDirectory() else api.getDirectory(directoryId)
-                        result.onSuccess { directoryInfo = it }
-                        isLoading = false
-                    }
+                    viewModel.deleteItem(itemId, directoryId)
                 }) {
                     Text("Deletar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = null }) {
+                TextButton(onClick = { viewModel.dismissDeleteConfirm() }) {
                     Text("Cancelar")
                 }
             },
@@ -368,14 +334,5 @@ private fun FileItem(
                 }
             }
         }
-    }
-}
-
-private fun formatFileSize(bytes: Long): String {
-    return when {
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-        bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024))} MB"
-        else -> "${"%.2f".format(bytes / (1024.0 * 1024 * 1024))} GB"
     }
 }

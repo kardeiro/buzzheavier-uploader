@@ -1,12 +1,8 @@
 package com.buzzheavier.uploader.ui.screens.settings
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
@@ -29,10 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,61 +36,41 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.buzzheavier.uploader.data.AccountInfo
-import com.buzzheavier.uploader.data.StorageLocation
-import com.buzzheavier.uploader.data.UserPreferences
-import com.buzzheavier.uploader.network.BuzzHeavierApi
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.buzzheavier.uploader.ui.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel()
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val prefs = remember { UserPreferences(context) }
-
-    val accountId by prefs.accountId.collectAsState(initial = "")
-    val parentDirectory by prefs.parentDirectory.collectAsState(initial = "")
-    val locationId by prefs.locationId.collectAsState(initial = "")
-    val isAnonymous by prefs.isAnonymous.collectAsState(initial = true)
-
-    var accountInfo by remember { mutableStateOf<AccountInfo?>(null) }
-    var locations by remember { mutableStateOf<List<StorageLocation>>(emptyList()) }
-    var isLoadingAccount by remember { mutableStateOf(false) }
-    var isLoadingLocations by remember { mutableStateOf(false) }
+    val accountId by viewModel.accountId.collectAsState()
+    val parentDirectory by viewModel.parentDirectory.collectAsState()
+    val locationId by viewModel.locationId.collectAsState()
+    val isAnonymous by viewModel.isAnonymous.collectAsState()
+    val accountInfo by viewModel.accountInfo.collectAsState()
+    val locations by viewModel.locations.collectAsState()
+    val isLoadingAccount by viewModel.isLoadingAccount.collectAsState()
+    val isLoadingLocations by viewModel.isLoadingLocations.collectAsState()
 
     LaunchedEffect(accountId) {
-        if (accountId.isNotEmpty()) {
-            isLoadingAccount = true
-            val api = BuzzHeavierApi(accountId)
-            api.getAccountInfo().onSuccess { accountInfo = it }
-            isLoadingAccount = false
-        }
+        viewModel.loadAccountInfo()
     }
 
     LaunchedEffect(Unit) {
-        isLoadingLocations = true
-        val api = BuzzHeavierApi(accountId)
-        api.getStorageLocations().onSuccess { locations = it }
-        isLoadingLocations = false
+        viewModel.loadLocations()
     }
 
     Scaffold(
@@ -175,7 +149,7 @@ fun SettingsScreen(
                             Text("Modo Anônimo", style = MaterialTheme.typography.bodyLarge)
                             Switch(
                                 checked = isAnonymous,
-                                onCheckedChange = { scope.launch { prefs.saveIsAnonymous(it) } }
+                                onCheckedChange = { viewModel.saveIsAnonymous(it) }
                             )
                         }
 
@@ -184,7 +158,7 @@ fun SettingsScreen(
                                 Spacer(Modifier.height(12.dp))
                                 OutlinedTextField(
                                     value = accountId,
-                                    onValueChange = { scope.launch { prefs.saveAccountId(it) } },
+                                    onValueChange = { viewModel.saveAccountId(it) },
                                     label = { Text("Account ID (Bearer Token)") },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp),
@@ -193,7 +167,7 @@ fun SettingsScreen(
                                 Spacer(Modifier.height(8.dp))
                                 OutlinedTextField(
                                     value = parentDirectory,
-                                    onValueChange = { scope.launch { prefs.saveParentDirectory(it) } },
+                                    onValueChange = { viewModel.saveParentDirectory(it) },
                                     label = { Text("Diretório Pai Padrão") },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp),
@@ -264,10 +238,7 @@ fun SettingsScreen(
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp)
-                                        .then(
-                                            if (location.isDefault) Modifier else Modifier
-                                        ),
+                                        .padding(vertical = 4.dp),
                                     shape = RoundedCornerShape(16.dp),
                                     color = if (location.isDefault) MaterialTheme.colorScheme.primaryContainer
                                         else MaterialTheme.colorScheme.surfaceVariant
@@ -305,7 +276,7 @@ fun SettingsScreen(
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = locationId,
-                            onValueChange = { scope.launch { prefs.saveLocationId(it) } },
+                            onValueChange = { viewModel.saveLocationId(it) },
                             label = { Text("Location ID Padrão") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -322,9 +293,8 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
         }
     }
 }
-

@@ -13,22 +13,13 @@ import com.buzzheavier.uploader.MainActivity
 import com.buzzheavier.uploader.R
 import com.buzzheavier.uploader.UploadConstants
 import com.buzzheavier.uploader.data.UploadProgress
-import com.buzzheavier.uploader.data.UploadStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class UploadService : Service() {
-
-    companion object {
-        val currentProgress = MutableStateFlow(UploadProgress())
-        val currentStatus = MutableStateFlow(UploadStatus.IDLE)
-        val currentFileName = MutableStateFlow("")
-        val uploadResults = MutableStateFlow<List<String>>(emptyList())
-    }
 
     private var uploadManager: UploadManager? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -60,7 +51,6 @@ class UploadService : Service() {
                         locationId = locationId,
                         note = note,
                         onProgress = { progress ->
-                            currentProgress.value = progress
                             updateNotification(progress)
                         }
                     )
@@ -108,7 +98,7 @@ class UploadService : Service() {
 
         return NotificationCompat.Builder(this, UploadConstants.CHANNEL_ID)
             .setContentTitle(getString(R.string.uploading))
-            .setContentText(currentFileName.value)
+            .setContentText(getString(R.string.notification_upload))
             .setSmallIcon(android.R.drawable.ic_menu_upload)
             .setContentIntent(pendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, getString(R.string.cancel), cancelPendingIntent)

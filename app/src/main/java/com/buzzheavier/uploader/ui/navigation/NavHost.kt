@@ -1,5 +1,6 @@
 package com.buzzheavier.uploader.ui.navigation
 
+import android.net.Uri
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.spring
@@ -11,6 +12,11 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -34,7 +40,8 @@ private val springSpec = spring<Float>(dampingRatio = 0.75f, stiffness = Spring.
 @Composable
 fun BuzzHeavierNavHost(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    sharedUri: Uri? = null
 ) {
     NavHost(
         navController = navController,
@@ -63,6 +70,7 @@ fun BuzzHeavierNavHost(
     ) {
         composable(Routes.UPLOAD) {
             UploadScreen(
+                sharedUri = sharedUri,
                 onNavigateToFiles = { navController.navigate(Routes.FILES) },
                 onNavigateToSettings = { navController.navigate(Routes.SETTINGS) }
             )
