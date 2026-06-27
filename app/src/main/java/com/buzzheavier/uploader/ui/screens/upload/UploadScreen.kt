@@ -112,6 +112,8 @@ fun UploadScreen(
         sharedUri?.let { viewModel.selectFile(it) }
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     val networkError by viewModel.networkError.collectAsState()
     LaunchedEffect(networkError) {
         networkError?.let {
@@ -122,7 +124,6 @@ fun UploadScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     val uploadState by viewModel.uploadState.collectAsState()
     val selectedUri by viewModel.selectedUri.collectAsState()
