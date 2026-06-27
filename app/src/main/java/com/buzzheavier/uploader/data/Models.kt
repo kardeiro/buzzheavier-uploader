@@ -58,6 +58,18 @@ data class UploadProgress(
     val isComplete: Boolean get() = percentage >= 100
 }
 
+data class UploadApiResponse(
+    val code: Int = 0,
+    val data: UploadData? = null
+)
+
+data class UploadData(
+    val id: String = "",
+    val name: String = "",
+    val size: Long = 0,
+    val expiry: String = ""
+)
+
 enum class UploadStatus {
     IDLE,
     PREPARING,

@@ -5,13 +5,16 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.buzzheavier.uploader.UploadConstants
+import com.buzzheavier.uploader.data.UploadApiResponse
 import com.buzzheavier.uploader.data.UploadProgress
 import com.buzzheavier.uploader.data.UploadResult
 import com.buzzheavier.uploader.data.UploadStatus
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import okhttp3.Call
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -23,11 +26,14 @@ import java.util.concurrent.TimeUnit
 
 class UploadManager(private val context: Context) {
 
-    private val client = OkHttpClient.Builder()
+    private val client = HttpClientProvider.baseClient.newBuilder()
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(300, TimeUnit.SECONDS)
         .writeTimeout(600, TimeUnit.SECONDS)
         .build()
+
+    private val gson = Gson()
+    private var currentCall: Call? = null
 
     private val _uploadState = MutableStateFlow(UploadState())
     val uploadState: StateFlow<UploadState> = _uploadState
@@ -145,16 +151,24 @@ class UploadManager(private val context: Context) {
             }
 
             val request = requestBuilder.build()
-            val response = client.newCall(request).execute()
+            val call = client.newCall(request)
+            currentCall = call
+            val response = call.execute()
+            currentCall = null
 
             if (response.isSuccessful) {
                 val responseBody = response.body?.string() ?: ""
-                val fileUrl = "https://buzzheavier.com/$fileName"
+                val fileId = try {
+                    gson.fromJson(responseBody, UploadApiResponse::class.java)?.data?.id ?: ""
+                } catch (_: Exception) { "" }
+                val fileUrl = if (fileId.isNotEmpty()) "https://buzzheavier.com/$fileId"
+                    else "https://buzzheavier.com/$fileName"
                 val result = UploadResult(
                     success = true,
                     url = fileUrl,
                     fileName = fileName,
-                    fileSize = fileSize
+                    fileSize = fileSize,
+                    fileId = fileId
                 )
                 _uploadState.value = _uploadState.value.copy(
                     status = UploadStatus.COMPLETED,
@@ -181,10 +195,13 @@ class UploadManager(private val context: Context) {
     }
 
     fun cancelUpload() {
+        currentCall?.cancel()
+        currentCall = null
         _uploadState.value = _uploadState.value.copy(status = UploadStatus.CANCELLED)
     }
 
     fun resetState() {
+        currentCall = null
         _uploadState.value = UploadState()
     }
 

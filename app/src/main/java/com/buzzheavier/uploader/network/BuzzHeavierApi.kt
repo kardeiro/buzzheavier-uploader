@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
 
 class BuzzHeavierApi(private val accountId: String = "") {
 
-    private val client = OkHttpClient.Builder()
+    private val client = HttpClientProvider.baseClient.newBuilder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(300, TimeUnit.SECONDS)
